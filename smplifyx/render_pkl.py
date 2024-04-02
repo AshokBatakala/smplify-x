@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 
+#for Ashok: direction for Usage
+# python smplifyx/render_pkl.py -c /path/to/conf.yaml --pkl /path/to/000.pkl 
+
 # Max-Planck-Gesellschaft zur Förderung der Wissenschaften e.V. (MPG) is
 # holder of all proprietary rights on this computer program.
 # You can only use this computer program if you have closed
@@ -39,7 +42,28 @@ if __name__ == '__main__':
 
     pkl_paths = args.pkl
 
-    args = parse_config(remaining)
+
+    # print("Ashok debug 1 \n remaining: ", remaining, type(remaining))
+    # args = parse_config(remaining)
+
+    # =============== Ashok wrote this part =================
+    # parse_config is throwing error : : Couldn't parse config file: could not determine a constructor for the tag 'tag:yaml.org,2002:python/tuple'
+    # just below code is a temperary fix for this issue
+
+
+    if remaining[0] == '--config' or remaining[0] == '-c':
+        config_file = remaining[1]
+
+        import yaml
+        import numpy as np
+
+        # Load the YAML file
+        with open(config_file, 'r') as f:
+            args = yaml.load(f, Loader=yaml.FullLoader)  # Use FullLoader instead of SafeLoader
+    print(f"config file is read from {remaining[1]}")
+
+    #=======================================================
+            
     dtype = torch.float32
     use_cuda = args.get('use_cuda', True)
     if use_cuda and torch.cuda.is_available():
@@ -102,8 +126,13 @@ if __name__ == '__main__':
                     body_pose = torch.cat([body_pose, wrist_pose], dim=1)
                 est_params['body_pose'] = body_pose
             else:
-                est_params[key] = torch.tensor(val, dtype=dtype, device=device)
+                est_params[key] = torch.tensor(val, dtype=dtype, device=device) # adds all other params of the pkl file
 
+        # ============ change the shape of the body ============
+        factor = -2.0
+        est_params['betas'] = torch.ones_like(est_params['betas']) * factor
+
+        # =====================================================
         model_output = model(**est_params)
         vertices = model_output.vertices.detach().cpu().numpy().squeeze()
 
@@ -112,6 +141,28 @@ if __name__ == '__main__':
             metallicFactor=0.0,
             alphaMode='OPAQUE',
             baseColorFactor=(1.0, 1.0, 0.9, 1.0))
+        
+        # # ------------- Ashok added this part ----------------
+        # import numpy as np
+        # import pyrender
+        # import trimesh
+        # from PIL import Image
+
+        # # Load a texture image
+        # tm_path ="/media/Ext_4T_SSD/ASHOK_PART2/default_texture.jpg"
+        # texture_image = np.array(Image.open(tm_path))
+
+        # # Create a Texture object
+        # texture = pyrender.Texture(source=texture_image, encoding='RGB', wrap_mode='REPEAT')
+
+
+        # # Create a Material object with the texture
+        # material = pyrender.MetallicRoughnessMaterial(baseColorTexture=texture)
+
+        # # Create the mesh with the material
+        # # mesh = pyrender.Mesh.from_trimesh(out_mesh, material=material)
+
+        # ---------------------------------------------------
         mesh = pyrender.Mesh.from_trimesh(
             out_mesh,
             material=material)
@@ -119,4 +170,26 @@ if __name__ == '__main__':
         scene = pyrender.Scene(bg_color=[0.0, 0.0, 0.0, 0.0],
                                ambient_light=(0.3, 0.3, 0.3))
         scene.add(mesh, 'mesh')
+
         pyrender.Viewer(scene, use_raymond_lighting=True)
+
+        # # Ashok added this part ==========================
+        # camera = pyrender.PerspectiveCamera(yfov=np.pi / 3.0, aspectRatio=1.0)
+        # camera_pose = np.eye(4)
+        # scene.add(camera, pose=camera_pose)
+        # light = pyrender.DirectionalLight(color=[1.0, 1.0, 1.0], intensity=2.0)
+        # scene.add(light, pose=camera_pose)
+        # r = pyrender.OffscreenRenderer(640, 480)
+        # color, depth = r.render(scene)
+        
+        # image_path = "/media/Ext_4T_SSD/ASHOK_PART2/color.png"
+        # depth_path = "/media/Ext_4T_SSD/ASHOK_PART2/depth.png"
+        # # pyrender.io.write_png(image_path, color)
+
+        # import matplotlib.pyplot as plt
+        # plt.imsave(image_path, color)
+        # print(f"Image saved to {image_path}")
+        # plt.imshow(depth, cmap='gray')
+        # plt.savefig(depth_path)
+        
+
