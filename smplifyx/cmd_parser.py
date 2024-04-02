@@ -24,10 +24,28 @@ import os
 import configargparse
 
 
+# #============================== Ashok made these changes ======================
+# # to get rid of the error: 
+# # error: Couldn't parse config file: could not determine a constructor for the tag 'tag:yaml.org,2002:python/tuple'
+# import yaml
+# from configargparse import ArgumentDefaultsHelpFormatter, ArgParser, YAMLConfigFileParser
+
+# class CustomYAMLConfigFileParser(YAMLConfigFileParser):
+#     def parse(self, stream):
+#         # Add a custom constructor for tuples
+#         yaml.SafeLoader.add_constructor(
+#             u'tag:yaml.org,2002:python/tuple',
+#             lambda loader, node: tuple(loader.construct_sequence(node))
+#         )
+#         return yaml.safe_load(stream)
+# #==============================================================================
+
+
 def parse_config(argv=None):
     arg_formatter = configargparse.ArgumentDefaultsHelpFormatter
 
     cfg_parser = configargparse.YAMLConfigFileParser
+    # cfg_parser = CustomYAMLConfigFileParser
     description = 'PyTorch implementation of SMPLifyX'
     parser = configargparse.ArgParser(formatter_class=arg_formatter,
                                       config_file_parser_class=cfg_parser,
