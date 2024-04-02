@@ -37,10 +37,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--pkl', nargs='+', type=str, required=True,
                         help='The pkl files that will be read')
+    parser.add_argument('--vis_values_pkl', type=str, required=True,)
 
     args, remaining = parser.parse_known_args()
 
     pkl_paths = args.pkl
+    vis_values_pkl = args.vis_values_pkl
 
 
     # print("Ashok debug 1 \n remaining: ", remaining, type(remaining))
@@ -129,8 +131,8 @@ if __name__ == '__main__':
                 est_params[key] = torch.tensor(val, dtype=dtype, device=device) # adds all other params of the pkl file
 
         # ============ change the shape of the body ============
-        factor = -2.0
-        est_params['betas'] = torch.ones_like(est_params['betas']) * factor
+        # factor = -2.0
+        # est_params['betas'] = torch.ones_like(est_params['betas']) * factor
 
         # =====================================================
         model_output = model(**est_params)
@@ -142,27 +144,6 @@ if __name__ == '__main__':
             alphaMode='OPAQUE',
             baseColorFactor=(1.0, 1.0, 0.9, 1.0))
         
-        # # ------------- Ashok added this part ----------------
-        # import numpy as np
-        # import pyrender
-        # import trimesh
-        # from PIL import Image
-
-        # # Load a texture image
-        # tm_path ="/media/Ext_4T_SSD/ASHOK_PART2/default_texture.jpg"
-        # texture_image = np.array(Image.open(tm_path))
-
-        # # Create a Texture object
-        # texture = pyrender.Texture(source=texture_image, encoding='RGB', wrap_mode='REPEAT')
-
-
-        # # Create a Material object with the texture
-        # material = pyrender.MetallicRoughnessMaterial(baseColorTexture=texture)
-
-        # # Create the mesh with the material
-        # # mesh = pyrender.Mesh.from_trimesh(out_mesh, material=material)
-
-        # ---------------------------------------------------
         mesh = pyrender.Mesh.from_trimesh(
             out_mesh,
             material=material)
@@ -171,25 +152,54 @@ if __name__ == '__main__':
                                ambient_light=(0.3, 0.3, 0.3))
         scene.add(mesh, 'mesh')
 
-        pyrender.Viewer(scene, use_raymond_lighting=True)
-
-        # # Ashok added this part ==========================
-        # camera = pyrender.PerspectiveCamera(yfov=np.pi / 3.0, aspectRatio=1.0)
-        # camera_pose = np.eye(4)
-        # scene.add(camera, pose=camera_pose)
-        # light = pyrender.DirectionalLight(color=[1.0, 1.0, 1.0], intensity=2.0)
-        # scene.add(light, pose=camera_pose)
-        # r = pyrender.OffscreenRenderer(640, 480)
-        # color, depth = r.render(scene)
+        # pyrender.Viewer(scene, use_raymond_lighting=True)
         
-        # image_path = "/media/Ext_4T_SSD/ASHOK_PART2/color.png"
-        # depth_path = "/media/Ext_4T_SSD/ASHOK_PART2/depth.png"
-        # # pyrender.io.write_png(image_path, color)
+        import pickle
 
-        # import matplotlib.pyplot as plt
-        # plt.imsave(image_path, color)
-        # print(f"Image saved to {image_path}")
-        # plt.imshow(depth, cmap='gray')
-        # plt.savefig(depth_path)
+        def render_mesh(vis_values_pkl, mesh ):
+            #load the values from the pickle file
+            with open(vis_values_pkl, 'rb') as vis_file:
+                vis_vals = pickle.load(vis_file)
+            #create a pyrender scene
+            scene = pyrender.Scene(bg_color=[0.0, 0.0, 0.0, 0.0],
+                                    ambient_light=(0.3, 0.3, 0.3))
+            #create a pyrender mesh
+            material = pyrender.MetallicRoughnessMaterial(
+                metallicFactor=0.0,
+                alphaMode='OPAQUE',
+                baseColorFactor=(1.0, 1.0, 0.9, 1.0))
+            mesh = pyrender.Mesh.from_trimesh(
+                mesh,
+                material=material)
+            scene.add(mesh, 'mesh')
+            #create a pyrender camera
+            camera = pyrender.camera.IntrinsicsCamera(
+                fx=vis_vals['focal_length'], fy=vis_vals['focal_length'],
+                cx=vis_vals['camera_center'][0], cy=vis_vals['camera_center'][1])
+            scene.add(camera, pose=vis_vals['camera_pose'])
+            #create a pyrender light
+            light = pyrender.PointLight(color=[1.0, 1.0, 1.0], intensity=1.0)
+            scene.add(light, pose=vis_vals['camera_pose'])
+            #create a pyrender renderer
+            r = pyrender.OffscreenRenderer(vis_vals['W'], vis_vals['H'])
+            color, _ = r.render(scene, flags=pyrender.RenderFlags.RGBA)
+            color = color.astype(np.float32) / 255.0
+            return color
+        # invert this transform
+            #     rot = trimesh.transformations.rotation_matrix(
+            # np.radians(180), [1, 0, 0])
         
+        import numpy as np
+        rot = trimesh.transformations.rotation_matrix(
+            np.radians(180), [1, 0, 0])
+        
+        out_mesh.apply_transform(rot)
+
+        # render the mesh
+        color = render_mesh(vis_values_pkl, out_mesh)
+        import matplotlib.pyplot as plt
+        plt.imshow(color)
+        plt.show()
+        plt.imsave('rendered.png', color)
+
 

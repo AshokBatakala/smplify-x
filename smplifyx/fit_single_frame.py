@@ -514,7 +514,7 @@ def fit_single_frame(img,
         out_mesh = trimesh.Trimesh(vertices, body_model.faces, process=False)
         rot = trimesh.transformations.rotation_matrix(
             np.radians(180), [1, 0, 0])
-        out_mesh.apply_transform(rot)
+        out_mesh.apply_transform(rot) # why this transformation
         out_mesh.export(mesh_fn)
 
     if visualize:
@@ -544,7 +544,7 @@ def fit_single_frame(img,
         camera = pyrender.camera.IntrinsicsCamera(
             fx=focal_length, fy=focal_length,
             cx=camera_center[0], cy=camera_center[1])
-        scene.add(camera, pose=camera_pose)
+        scene.add(camera, pose=camera_pose) 
 
         # Get the lights from the viewer
         light_nodes = monitor.mv.viewer._create_raymond_lights()
@@ -564,3 +564,16 @@ def fit_single_frame(img,
 
         img = pil_img.fromarray((output_img * 255).astype(np.uint8))
         img.save(out_img_fn)
+
+        #store all the values that are neede for the visualization
+        vis_vals = {'focal_length': focal_length,
+                    'camera_center': camera_center,
+                    'camera_pose': camera_pose,
+                    'W': W,
+                    'H': H
+                    }
+        #store the values in a pickle file
+        vis_fn = osp.splitext(out_img_fn)[0] + '_vis_values.pkl'
+        with open(vis_fn, 'wb') as vis_file:
+            pickle.dump(vis_vals, vis_file, protocol=2)
+            
