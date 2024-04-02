@@ -43,7 +43,12 @@ import PIL.Image as pil_img
 from optimizers import optim_factory
 
 import fitting
+
 from human_body_prior.tools.model_loader import load_vposer
+
+#Ashok added these two lines, since the original import was not working
+# from human_body_prior.models.vposer_model import VPoser 
+# from human_body_prior.tools.model_loader import load_model as load_vposer
 
 
 def fit_single_frame(img,
@@ -58,8 +63,8 @@ def fit_single_frame(img,
                      shape_prior,
                      expr_prior,
                      angle_prior,
-                     result_fn='out.pkl',
-                     mesh_fn='out.obj',
+                     result_fn='out.pkl', # .pkl file to store params
+                     mesh_fn='out.obj',   # .obj file to store mesh
                      out_img_fn='overlay.png',
                      loss_type='smplify',
                      use_cuda=True,
@@ -460,6 +465,12 @@ def fit_single_frame(img,
                         or_idx, elapsed))
                 tqdm.write('Body final loss val = {:.5f}'.format(
                     final_loss_val))
+                
+            #Ashok 
+            # ========= params pickle file values =========
+            # result variable is a dictionary containing the parameters
+            # of the camera and the body model, as well as the pose.
+
 
             # Get the result of the fitting process
             # Store in it the errors list in order to compare multiple
@@ -493,7 +504,7 @@ def fit_single_frame(img,
                 wrist_pose = torch.zeros([body_pose.shape[0], 6],
                                          dtype=body_pose.dtype,
                                          device=body_pose.device)
-                body_pose = torch.cat([body_pose, wrist_pose], dim=1)
+                body_pose = torch.cat([body_pose, wrist_pose], dim=1) 
 
         model_output = body_model(return_verts=True, body_pose=body_pose)
         vertices = model_output.vertices.detach().cpu().numpy().squeeze()
